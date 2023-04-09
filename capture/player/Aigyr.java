@@ -328,7 +328,35 @@ public class Aigyr {
                 }
             }
 
-            System.out.printf( "%.2f 0.0 ", Const.BUMPER_ACCEL_LIMIT );
+            double minDistance = Double.MAX_VALUE;
+            int minPos = -1;
+            Point2D bumper1 = blist.get(1).pos;
+            for (int i = 0; i < plist.size(); i++) {
+                if (plist.get(i).color == Const.BLUE && target[1] < 0) {
+                    double curDistance = plist.get(i).pos.distance(bumper1);
+                    if (curDistance < minDistance) {
+                        minDistance = curDistance;
+                        minPos = i;
+
+                    }
+                }
+            }
+            if (minPos != -1) {
+                if (target[1] < 0) {
+                    target[1] = minPos;
+                    ttimer[1] = 33;
+                }
+
+            }
+
+            if (ttimer[1] > 0) {
+                Point2D tpos = plist.get( target[1] ).pos;
+                Point2D tdir = diff( tpos, bumper1 );
+                System.out.printf( "%.2f %.2f ", tdir.getX(), tdir.getY() );
+            } else {
+                System.out.printf( "%.2f 0.0 ", Const.BUMPER_ACCEL_LIMIT );
+            }
+
 
             System.out.printf( "%.6f\n", slideMove[moveCount]);
 
