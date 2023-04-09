@@ -157,6 +157,9 @@ public class Aigyr {
         // Keep reading states until the game ends.
         int tnum = in.nextInt();
         int last = -1;
+
+        int goX = 100, goY = 300;
+        int goMode = 2;
         while ( tnum >= 0 ) {
             // Read all the pucks
             int n = in.nextInt();
@@ -210,7 +213,8 @@ public class Aigyr {
             // Just make each sled run toward the nearest grey puck.
             for ( int i = 0; i < 1; i++ ) {
                 // Where do we try to send the pucks?
-                Point2D tdest = new Point2D.Double( 100, i == 0 ? 300 : 500 );
+                //Point2D tdest = new Point2D.Double( 100, i == 0 ? 300 : 500 );
+                Point2D tdest = new Point2D.Double(goX, goY);
 
                 Bumper bumper = blist.get( i );
                 if ( ttimer[ i ] <= 0 ) {
@@ -219,7 +223,7 @@ public class Aigyr {
                     for ( int j = 0; j < plist.size(); j++ ) {
                         // Pick a grey target that's close to the player and not too close
                         // to the destination.
-                        if ( plist.get( j ).color == Const.GREY &&
+                        if ( plist.get( j ).color == goMode &&
                                 plist.get( j ).pos.distance( tdest ) > 120 &&
                                 Math.abs( plist.get( j ).pos.getX() - 400 ) < 340 &&
                                 Math.abs( plist.get( j ).pos.getY() - 400 ) < 340 &&
@@ -314,6 +318,7 @@ public class Aigyr {
                         // one the next turn.
                         if ( p1 + v1 + f1 > -13 )
                             ttimer[ i ] = 1;
+                            goMode = 2 - goMode;
                     }
 
                     Point2D force = sum( scale( a1, f1 ), scale( a2, f2 ) );
@@ -325,6 +330,7 @@ public class Aigyr {
                     ttimer[ i ]--;
                 } else {
                     // Just move to the right.
+                    goMode = 2 - goMode;
                     System.out.printf( "%.2f 0.0 ", Const.BUMPER_ACCEL_LIMIT );
                 }
             }
@@ -367,6 +373,15 @@ public class Aigyr {
 
             // Try to read the next game state.
             tnum = in.nextInt();
+            if (moveCount % 80 == 0) {
+                goX += 80;
+                goY -= 20;
+            }
+            if (goY < 0) {
+                goY = 650;
+                goX = 100;
+            }
+
             moveCount++;
         }
     }

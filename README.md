@@ -8,6 +8,9 @@ Basic game structure for nFactorial AI CUP 2023, game track
 ### Instructions to start your code
 
 ```
+0. 
+    get inside capture dictionary (cd capture)
+   
 1. 
     javac javac .\player\Const.java 
     
