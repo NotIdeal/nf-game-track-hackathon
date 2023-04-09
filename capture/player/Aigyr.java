@@ -157,8 +157,9 @@ public class Aigyr {
         // Keep reading states until the game ends.
         int tnum = in.nextInt();
         int last = -1;
+        int last0 = -1;
 
-        int goX = 100, goY = 300;
+        double goX = 100.0, goY = 300.0;
         int goMode = 2;
         while ( tnum >= 0 ) {
             // Read all the pucks
@@ -211,126 +212,167 @@ public class Aigyr {
             }
 
             // Just make each sled run toward the nearest grey puck.
-            for ( int i = 0; i < 1; i++ ) {
-                // Where do we try to send the pucks?
-                //Point2D tdest = new Point2D.Double( 100, i == 0 ? 300 : 500 );
-                Point2D tdest = new Point2D.Double(goX, goY);
+            if (moveCount < 5000) {
+                for (int i = 0; i < 1; i++) {
+                    // Where do we try to send the pucks?
+                    //Point2D tdest = new Point2D.Double( 100, i == 0 ? 300 : 500 );
+                    Point2D tdest = new Point2D.Double(goX, goY);
 
-                Bumper bumper = blist.get( i );
-                if ( ttimer[ i ] <= 0 ) {
-                    // Find a target that's grey and close to the bumper.
-                    target[ i ] = -1;
-                    for ( int j = 0; j < plist.size(); j++ ) {
-                        // Pick a grey target that's close to the player and not too close
-                        // to the destination.
-                        if ( plist.get( j ).color == goMode &&
-                                plist.get( j ).pos.distance( tdest ) > 120 &&
-                                Math.abs( plist.get( j ).pos.getX() - 400 ) < 340 &&
-                                Math.abs( plist.get( j ).pos.getY() - 400 ) < 340 &&
-                                ( target[ i ] < 0 ||
-                                        plist.get( j ).pos.distance( bumper.pos ) <
-                                                plist.get( target[ i ] ).pos.distance( bumper.pos ) ) )
-                            target[ i ] = j;
+                    Bumper bumper = blist.get(i);
+                    if (ttimer[i] <= 0) {
+                        // Find a target that's grey and close to the bumper.
+                        target[i] = -1;
+                        for (int j = 0; j < plist.size(); j++) {
+                            // Pick a grey target that's close to the player and not too close
+                            // to the destination.
+                            if (plist.get(j).color == goMode &&
+                                    plist.get(j).pos.distance(tdest) > 120 &&
+                                    Math.abs(plist.get(j).pos.getX() - 400) < 340 &&
+                                    Math.abs(plist.get(j).pos.getY() - 400) < 340 &&
+                                    (target[i] < 0 ||
+                                            plist.get(j).pos.distance(bumper.pos) <
+                                                    plist.get(target[i]).pos.distance(bumper.pos)))
+                                target[i] = j;
+                        }
+
+                        // Give a fixed number of moves to deal with the target.
+                        if (target[i] >= 0)
+                            ttimer[i] = 20;
                     }
 
-                    // Give a fixed number of moves to deal with the target.
-                    if ( target[ i ] >= 0 )
-                        ttimer[ i ] = 20;
+                    if (ttimer[i] > 0) {
+                        // Where's the target.
+                        Point2D tpos = plist.get(target[i]).pos;
+
+                        // Split the bumper's veloicty into components toward the puck
+                        // and perp.
+                        double dist = tpos.distance(bumper.pos);
+                        Point2D a1 = scale(diff(tpos, bumper.pos), 1.0 / dist);
+                        Point2D a2 = perp(a1);
+
+                        // Represent the velocity WRT a target-centric frame.
+                        double v1 = dot(a1, bumper.vel);
+                        double v2 = dot(a2, bumper.vel);
+
+                        // compute force in this frame.
+                        double f1 = 0;
+                        double f2 = 0;
+
+                        // Direction from the puck to where we want to hit it.
+                        Point2D tdir = diff(tdest, tpos);
+
+                        // Should we move around the target puck?
+                        double dprod = dot(a1, norm(tdir));
+                        if (dprod < 0.8) {
+                            // Try to maintain a moderate distance to the target.
+                            if (dist > 80) {
+                                f1 = ACCEL;
+                            } else if (dist < 40) {
+                                f1 = -ACCEL;
+                            } else {
+                                f1 = clamp(-v1, -ACCEL, ACCEL);
+                            }
+
+                            // How far around do we have to around the target.
+                            double cdist = Math.acos(dprod) * dist;
+                            // Move around the shorter way.
+                            if (cross(tdir, a1) > 0) {
+                                f2 = ACCEL;
+                            } else {
+                                f2 = -ACCEL;
+                            }
+                        } else {
+                            // Consider the velocity WRT a frame that points from the target
+                            // puck to the destination
+                            a1 = norm(tdir);
+                            a2 = perp(a1);
+
+                            v1 = dot(a1, bumper.vel);
+                            v2 = dot(a2, bumper.vel);
+
+                            // Position of the bumper WRT the target puck and a frame pointing
+                            // to the target's destination.
+                            Point2D bdisp = diff(bumper.pos, tpos);
+                            double p1 = dot(a1, bdisp);
+                            double p2 = dot(a2, bdisp);
+
+                            // How hard do we have to hit the target to get it to the
+                            // destination.
+                            double tdist = mag(tdir);
+
+                            double a = 0.5;
+                            double b = 0.5;
+                            double c = -tdist;
+
+                            // Number of steps the puck has to take to cover mag tdist.
+                            double steps = (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a);
+
+                            // Approximate velocity to get the puck to travel to its
+                            // destination.
+                            double vel = steps * 0.7;
+
+                            // Match desired velocity in the direction we want to move the puck,
+                            // line up on the other axis.
+                            f1 = clamp(vel - v1, -ACCEL, ACCEL);
+                            f2 = moveTo(p2, v2, 0.0, ACCEL);
+
+                            // If we are about to hit the target, pick a new
+                            // one the next turn.
+                            if (p1 + v1 + f1 > -13)
+                                ttimer[i] = 1;
+                            goMode = 2 - goMode;
+                        }
+
+                        Point2D force = sum(scale(a1, f1), scale(a2, f2));
+
+                        // Tell the game what direction we want to move this bumper.
+                        System.out.printf("%.2f %.2f ", force.getX(), force.getY());
+
+                        // Count down for how long we can chase this target.
+                        ttimer[i]--;
+                    } else {
+                        // Just move to the right.
+                        goMode = 2 - goMode;
+                        System.out.printf("%.2f 0.0 ", Const.BUMPER_ACCEL_LIMIT);
+                    }
+                }
+            } else {
+                if (last0 == -1) {
+                    target[0] = -1;
+                }
+                double minDistance = Double.MAX_VALUE;
+                int minPos = -1;
+                Point2D bumper1 = blist.get(0).pos;
+                for (int i = 0; i < plist.size() && target[0] < 0; i++) {
+                    if (i != last0 && plist.get(i).color == Const.RED) {
+                        double curDistance = plist.get(i).pos.distance(bumper1);
+                        if (curDistance < minDistance) {
+                            minDistance = curDistance;
+                            minPos = i;
+                        }
+                    }
+                }
+                if (minPos != -1) {
+                    if (target[1] < 0) {
+                        target[1] = minPos;
+                        ttimer[1] = 20;
+                        last0 = minPos;
+                    }
+
                 }
 
-                if ( ttimer[ i ] > 0 ) {
-                    // Where's the target.
-                    Point2D tpos = plist.get( target[ i ] ).pos;
-
-                    // Split the bumper's veloicty into components toward the puck
-                    // and perp.
-                    double dist = tpos.distance( bumper.pos );
-                    Point2D a1 = scale( diff( tpos, bumper.pos ), 1.0 / dist );
-                    Point2D a2 = perp( a1 );
-
-                    // Represent the velocity WRT a target-centric frame.
-                    double v1 = dot( a1, bumper.vel );
-                    double v2 = dot( a2, bumper.vel );
-
-                    // compute force in this frame.
-                    double f1 = 0;
-                    double f2 = 0;
-
-                    // Direction from the puck to where we want to hit it.
-                    Point2D tdir = diff( tdest, tpos );
-
-                    // Should we move around the target puck?
-                    double dprod = dot( a1, norm( tdir ) );
-                    if ( dprod < 0.8 ) {
-                        // Try to maintain a moderate distance to the target.
-                        if ( dist > 80 ) {
-                            f1 = ACCEL;
-                        } else if ( dist < 40 ) {
-                            f1 = -ACCEL;
-                        } else {
-                            f1 = clamp( -v1, -ACCEL, ACCEL );
-                        }
-
-                        // How far around do we have to around the target.
-                        double cdist = Math.acos( dprod ) * dist;
-                        // Move around the shorter way.
-                        if ( cross( tdir, a1 ) > 0 ) {
-                            f2 = ACCEL;
-                        } else {
-                            f2 = -ACCEL;
-                        }
-                    } else {
-                        // Consider the velocity WRT a frame that points from the target
-                        // puck to the destination
-                        a1 = norm( tdir );
-                        a2 = perp( a1 );
-
-                        v1 = dot( a1, bumper.vel );
-                        v2 = dot( a2, bumper.vel );
-
-                        // Position of the bumper WRT the target puck and a frame pointing
-                        // to the target's destination.
-                        Point2D bdisp = diff( bumper.pos, tpos );
-                        double p1 = dot( a1, bdisp );
-                        double p2 = dot( a2, bdisp );
-
-                        // How hard do we have to hit the target to get it to the
-                        // destination.
-                        double tdist = mag( tdir );
-
-                        double a = 0.5;
-                        double b = 0.5;
-                        double c = -tdist;
-
-                        // Number of steps the puck has to take to cover mag tdist.
-                        double steps = ( -b + Math.sqrt( b * b - 4 * a * c ) ) / ( 2 * a );
-
-                        // Approximate velocity to get the puck to travel to its
-                        // destination.
-                        double vel = steps * 0.7;
-
-                        // Match desired velocity in the direction we want to move the puck,
-                        // line up on the other axis.
-                        f1 = clamp( vel - v1, -ACCEL, ACCEL );
-                        f2 = moveTo( p2, v2, 0.0, ACCEL );
-
-                        // If we are about to hit the target, pick a new
-                        // one the next turn.
-                        if ( p1 + v1 + f1 > -13 )
-                            ttimer[ i ] = 1;
-                            goMode = 2 - goMode;
+                if (ttimer[0] > 0 && target[0] >= 0 && target[0] < plist.size()) {
+                    Point2D tpos = plist.get( target[0] ).pos;
+                    Point2D tdir = diff( bumper1, tpos );
+                    if (Math.min(tdir.getX(), tdir.getY()) < 0) {
+                        tdir = diff(tpos, bumper1);
                     }
-
-                    Point2D force = sum( scale( a1, f1 ), scale( a2, f2 ) );
-
-                    // Tell the game what direction we want to move this bumper.
-                    System.out.printf( "%.2f %.2f ", force.getX(), force.getY() );
-
-                    // Count down for how long we can chase this target.
-                    ttimer[ i ]--;
+                    System.out.printf( "%.2f %.2f ", tdir.getX(), tdir.getY() );
+                    ttimer[0]--;
+                    if (ttimer[0] == 0) {
+                        target[0] = -1;
+                    }
                 } else {
-                    // Just move to the right.
-                    goMode = 2 - goMode;
                     System.out.printf( "%.2f 0.0 ", Const.BUMPER_ACCEL_LIMIT );
                 }
             }
@@ -352,13 +394,16 @@ public class Aigyr {
                 if (target[1] < 0) {
                     target[1] = minPos;
                     ttimer[1] = 20;
+                    last = minPos;
                 }
-                last = minPos;
             }
 
-            if (ttimer[1] > 0) {
+            if (ttimer[1] > 0 && target[1] >= 0 && target[1] < plist.size()) {
                 Point2D tpos = plist.get( target[1] ).pos;
                 Point2D tdir = diff( tpos, bumper1 );
+                if (Math.min(tdir.getX(), tdir.getY()) < 0) {
+                    tdir = diff(tpos, bumper1);
+                }
                 System.out.printf( "%.2f %.2f ", tdir.getX(), tdir.getY() );
                 ttimer[1]--;
                 if (ttimer[1] == 0) {
@@ -374,12 +419,12 @@ public class Aigyr {
             // Try to read the next game state.
             tnum = in.nextInt();
             if (moveCount % 80 == 0) {
-                goX += 80;
-                goY -= 20;
+                goX += 90;
+                goY -= 30;
             }
             if (goY < 0) {
-                goY = 650;
-                goX = 100;
+                goY = 800.0;
+                goX = 100.0;
             }
 
             moveCount++;
