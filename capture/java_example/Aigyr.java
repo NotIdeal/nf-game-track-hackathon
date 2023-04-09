@@ -21,7 +21,7 @@ public class Aigyr {
   static class Bumper {
     // Position of the bumper.
     Point2D pos;
-    
+
     // Bumper velocity
     Point2D vel;
   };
@@ -30,7 +30,7 @@ public class Aigyr {
   static class Sled {
     // Position of the sled.
     Point2D pos;
-    
+
     // Sled direction.
     double dir;
   };
@@ -49,14 +49,14 @@ public class Aigyr {
 
   /** Return a new vector containing the sum of a and b. */
   static Point2D sum( Point2D a, Point2D b ) {
-    return new Point2D.Double( a.getX() + b.getX(), 
-                               a.getY() + b.getY() );
+    return new Point2D.Double( a.getX() + b.getX(),
+            a.getY() + b.getY() );
   }
 
   /** Return a new vector containing the difference between a and b. */
   static Point2D diff( Point2D a, Point2D b ) {
-    return new Point2D.Double( a.getX() - b.getX(), 
-                               a.getY() - b.getY() );
+    return new Point2D.Double( a.getX() - b.getX(),
+            a.getY() - b.getY() );
   }
 
   /** Return a new vector containing a scaled by scaling factor s. */
@@ -73,7 +73,7 @@ public class Aigyr {
   static Point2D norm( Point2D a ) {
     double m = mag( a );
     return new Point2D.Double( a.getX() / m,
-                               a.getY() / m );
+            a.getY() / m );
   }
 
   /** Return a ccw perpendicular vector for a. */
@@ -92,9 +92,9 @@ public class Aigyr {
   }
 
   /** One dimensional function to help compute acceleration vectors. Return an
-      acceleration that can be applied to a bumper at pos and moving
-      with velocity vel to get it to target.  The alim parameter puts
-      a limit on the acceleration available. */
+   acceleration that can be applied to a bumper at pos and moving
+   with velocity vel to get it to target.  The alim parameter puts
+   a limit on the acceleration available. */
   private static double moveTo( double pos, double vel, double target,
                                 double alim ) {
     // Compute how far pos has to go to hit target.
@@ -103,18 +103,18 @@ public class Aigyr {
     // Kill velocity if we are close enough.
     if ( Math.abs( dist ) < 0.01 )
       return clamp( -vel, -alim, alim );
-    
+
     // How many steps, at minimum, would cover the remaining distance
     // and then stop.
-    double steps = Math.ceil(( -1 + Math.sqrt(1 + 8.0 * Math.abs(dist) / alim)) 
-                             / 2.0);
+    double steps = Math.ceil(( -1 + Math.sqrt(1 + 8.0 * Math.abs(dist) / alim))
+            / 2.0);
     if ( steps < 1 )
       steps = 1;
-    
+
     // How much acceleration would we need to apply at each step to
     // cover dist.
     double accel = 2 * dist / ( ( steps + 1 ) * steps );
-    
+
     // Ideally, how fast would we be going now
     double ivel = accel * steps;
 
@@ -197,7 +197,7 @@ public class Aigyr {
         s.pos = new Point2D.Double( x, y );
         s.dir = in.nextDouble();
         slist.add( s );
-        
+
         // Just throw away the trail information.
         int ts = in.nextInt();
         for ( int j = 0; j < ts; j++ ) {
@@ -219,12 +219,12 @@ public class Aigyr {
             // Pick a grey target that's close to the player and not too close
             // to the destination.
             if ( plist.get( j ).color == Const.GREY &&
-                 plist.get( j ).pos.distance( tdest ) > 120 &&
-                 Math.abs( plist.get( j ).pos.getX() - 400 ) < 340 &&
-                 Math.abs( plist.get( j ).pos.getY() - 400 ) < 340 &&
-                 ( target[ i ] < 0 ||
-                   plist.get( j ).pos.distance( bumper.pos ) <
-                   plist.get( target[ i ] ).pos.distance( bumper.pos ) ) )
+                    plist.get( j ).pos.distance( tdest ) > 120 &&
+                    Math.abs( plist.get( j ).pos.getX() - 400 ) < 340 &&
+                    Math.abs( plist.get( j ).pos.getY() - 400 ) < 340 &&
+                    ( target[ i ] < 0 ||
+                            plist.get( j ).pos.distance( bumper.pos ) <
+                                    plist.get( target[ i ] ).pos.distance( bumper.pos ) ) )
               target[ i ] = j;
           }
 
@@ -236,13 +236,13 @@ public class Aigyr {
         if ( ttimer[ i ] > 0 ) {
           // Where's the target.
           Point2D tpos = plist.get( target[ i ] ).pos;
-          
+
           // Split the bumper's veloicty into components toward the puck
           // and perp.
           double dist = tpos.distance( bumper.pos );
           Point2D a1 = scale( diff( tpos, bumper.pos ), 1.0 / dist );
           Point2D a2 = perp( a1 );
-        
+
           // Represent the velocity WRT a target-centric frame.
           double v1 = dot( a1, bumper.vel );
           double v2 = dot( a2, bumper.vel );
@@ -256,7 +256,7 @@ public class Aigyr {
 
           // Should we move around the target puck?
           double dprod = dot( a1, norm( tdir ) );
-          if ( dprod < 0.8 ) { 
+          if ( dprod < 0.8 ) {
             // Try to maintain a moderate distance to the target.
             if ( dist > 80 ) {
               f1 = ACCEL;
@@ -296,7 +296,7 @@ public class Aigyr {
             double a = 0.5;
             double b = 0.5;
             double c = -tdist;
-            
+
             // Number of steps the puck has to take to cover mag tdist.
             double steps = ( -b + Math.sqrt( b * b - 4 * a * c ) ) / ( 2 * a );
 
@@ -314,7 +314,7 @@ public class Aigyr {
             if ( p1 + v1 + f1 > -13 )
               ttimer[ i ] = 1;
           }
-          
+
           Point2D force = sum( scale( a1, f1 ), scale( a2, f2 ) );
 
           // Tell the game what direction we want to move this bumper.
@@ -327,6 +327,8 @@ public class Aigyr {
           System.out.printf( "%.2f 0.0 ", Const.BUMPER_ACCEL_LIMIT );
         }
       }
+
+      System.out.printf( "%.2f 0.0 ", Const.BUMPER_ACCEL_LIMIT );
 
       System.out.printf( "%.6f\n", slideMove[moveCount]);
 
