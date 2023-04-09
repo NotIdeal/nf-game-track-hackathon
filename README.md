@@ -8,14 +8,16 @@ Basic game structure for nFactorial AI CUP 2023, game track
 ### Instructions to start your code
 
 ```
+Setup JDK 19.0.2
+
 0. 
     get inside capture dictionary (cd capture)
    
 1. 
-    javac javac .\player\Const.java 
+    javac .\player\Const.java 
     
 2.
-    javac javac .\player\Aigyr.java  
+    javac .\player\Aigyr.java  
    
 3. 
     java -jar .\capture.jar -player java player.Aigyr
