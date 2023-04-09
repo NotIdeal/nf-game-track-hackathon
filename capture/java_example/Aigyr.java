@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Scanner;
 import java.awt.geom.Point2D;
 
-public class Eight {
+public class Aigyr {
   /** Simple representation for a puck. */
   static class Puck {
     // Position of the puck.
@@ -123,7 +123,7 @@ public class Eight {
   }
 
   public static void main( String[] arg ) {
-    // List of current sled, bumper and puck locations.
+
     ArrayList< Puck > plist = new ArrayList< Puck >();
     ArrayList< Bumper > blist = new ArrayList< Bumper >();
     ArrayList< Sled > slist = new ArrayList< Sled >();
@@ -134,6 +134,22 @@ public class Eight {
 
     // Target for each bumper.
     int[] target = { -1, -1 };
+
+    double[] slideMove = new double[5000];
+    int cnt = 0;
+    for (int i = 0; i < 5000; i++) {
+      if (cnt < 40) {
+        slideMove[i] = -Math.PI * 2.0 / 40;
+      } else {
+        slideMove[i] = -0.05;
+        for (int j = i + 1; j < i + 4; j++) {
+          slideMove[j] = 0.0;
+        }
+        i = i + 3;
+        cnt = -1;
+      }
+      cnt++;
+    }
 
     // How much time the bumper has to pursue the target.
     int[] ttimer = { 0, 0 };
@@ -191,7 +207,7 @@ public class Eight {
       }
 
       // Just make each sled run toward the nearest grey puck.
-      for ( int i = 0; i < 2; i++ ) {
+      for ( int i = 0; i < 1; i++ ) {
         // Where do we try to send the pucks?
         Point2D tdest = new Point2D.Double( 100, i == 0 ? 300 : 500 );
 
@@ -312,12 +328,7 @@ public class Eight {
         }
       }
 
-      // Make the sled drive in a figure eight.
-      if ( moveCount % 80 < 40 ) {
-        System.out.printf( "%.6f\n", Math.PI * 2.0 / 40 );
-      } else {
-        System.out.printf( "%.6f\n", -Math.PI * 2.0 / 40 );
-      }
+      System.out.printf( "%.6f\n", slideMove[moveCount]);
 
       // Try to read the next game state.
       tnum = in.nextInt();
